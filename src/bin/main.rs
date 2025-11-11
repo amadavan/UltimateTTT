@@ -1,6 +1,6 @@
 use std::io;
 
-pub mod board;
+use ultimate_ttt::board;
 
 fn main() {
     let mut board = board::Board::new();

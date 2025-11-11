@@ -24,7 +24,7 @@ pub enum BoardStatus {
     Draw,
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct Move {
     microboard_row: usize,
     microboard_col: usize,
@@ -33,7 +33,12 @@ pub struct Move {
 }
 
 impl Move {
-    pub fn new(microboard_row: usize, microboard_col: usize, cell_row: usize, cell_col: usize) -> Self {
+    pub fn new(
+        microboard_row: usize,
+        microboard_col: usize,
+        cell_row: usize,
+        cell_col: usize,
+    ) -> Self {
         Move {
             microboard_row,
             microboard_col,
@@ -51,9 +56,35 @@ impl Move {
     }
 }
 
+impl From<(usize, usize, usize, usize)> for Move {
+    fn from(coords: (usize, usize, usize, usize)) -> Self {
+        Move {
+            microboard_row: coords.0,
+            microboard_col: coords.1,
+            cell_row: coords.2,
+            cell_col: coords.3,
+        }
+    }
+}
+
 impl From<Move> for (usize, usize, usize, usize) {
-    fn from(mv: Move) -> Self {
-        (mv.microboard_row, mv.microboard_col, mv.cell_row, mv.cell_col)
+    fn from(mv: Move) -> (usize, usize, usize, usize) {
+        (
+            mv.microboard_row,
+            mv.microboard_col,
+            mv.cell_row,
+            mv.cell_col,
+        )
+    }
+}
+
+impl fmt::Debug for Move {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "({}, {}, {}, {})",
+            self.microboard_row, self.microboard_col, self.cell_row, self.cell_col
+        )
     }
 }
 
@@ -83,6 +114,10 @@ impl Board {
 
     pub fn get_cells(&self) -> &Vec<Vec<MicroBoard>> {
         &self.cells
+    }
+
+    pub fn get_microboard(&self, row: usize, col: usize) -> &MicroBoard {
+        &self.cells[row][col]
     }
 
     pub fn update_status(&mut self) -> &BoardStatus {
@@ -139,60 +174,52 @@ impl Board {
             return Vec::new();
         }
 
-        // Check if restricted by the previous board
+        // Get set of available microboards
+        let mut microboard_moves = Vec::new();
+
+        // Only restrict to previous board if it's still in progress
         if let Some(prev_move) = self.previous_move {
             let (cell_row, cell_col) = prev_move.get_cell_position();
             let microboard = &self.cells[cell_row][cell_col];
             if microboard.status == BoardStatus::InProgress {
-                return vec![Move::new(cell_row, cell_col, 0, 0)]; // Cell positions are irrelevant here
+                microboard_moves.push((cell_row, cell_col));
             }
         }
 
-        let mut moves = Vec::new();
-        for i in 0..3 {
-            for j in 0..3 {
-                if self.cells[i][j].status == BoardStatus::InProgress {
-                    moves.push(Move::new(i, j, 0, 0));
+        if microboard_moves.is_empty() {
+            for i in 0..3 {
+                for j in 0..3 {
+                    if self.cells[i][j].status == BoardStatus::InProgress {
+                        microboard_moves.push((i, j));
+                    }
                 }
+            }
+        }
+
+        // Return the set of available moves
+        let mut moves = Vec::new();
+        for (microboard_row, microboard_col) in microboard_moves {
+            let microboard = &self.cells[microboard_row][microboard_col];
+            for (cell_row, cell_col) in microboard.get_available_moves() {
+                moves.push((microboard_row, microboard_col, cell_row, cell_col).into());
             }
         }
         moves
     }
 
-    pub fn is_valid_move(
-        &self,
-        microboard_row: usize,
-        microboard_col: usize,
-    ) -> bool {
+    pub fn is_valid_move(&self, mv: Move) -> bool {
         // Check if the game is already won
         if self.is_won() {
             return false;
         }
 
-        // Check if restricted by the previous board
-        if let Some(prev_move) = self.previous_move {
-            if (microboard_row, microboard_col) != prev_move.get_cell_position() {
-                return false;
-            }
-        }
-
-        // Check if the specified microboard is available
-        let microboard = &self.cells[microboard_row][microboard_col];
-        if microboard.status != BoardStatus::InProgress {
-            return false;
-        }
-
-        true
+        self.get_available_moves().contains(&mv)
     }
 
-    pub fn play(
-        &mut self,
-        microboard_row: usize,
-        microboard_col: usize,
-        cell_row: usize,
-        cell_col: usize,
-        player: Player,
-    ) -> Result<(), String> {
+    pub fn play(&mut self, mv: Move, player: Player) -> Result<(), String> {
+        let (microboard_row, microboard_col) = mv.get_microboard_position();
+        let (cell_row, cell_col) = mv.get_cell_position();
+
         // Check if move is valid
         if self.is_won() {
             return Err("Board already won".to_string());
@@ -200,9 +227,12 @@ impl Board {
         if microboard_row >= 3 || microboard_col >= 3 {
             return Err("Invalid microboard position".to_string());
         }
-        if !self.is_valid_move(microboard_row, microboard_col) {
-            println!("Invalid move: previous_move = {:?}, attempted move = ({}, {})", self.previous_move, microboard_row, microboard_col);
-            println!("Valid microboards: {:?}", self.get_available_moves());
+        if !self.is_valid_move(mv) {
+            println!(
+                "Invalid move: previous_move = {:?}, attempted move = {:?}",
+                self.previous_move, mv
+            );
+            println!("Valid moves: {:?}", self.get_available_moves());
             return Err("Invalid move based on previous move".to_string());
         }
 
@@ -211,7 +241,12 @@ impl Board {
         microboard.play(cell_row, cell_col, player)?;
 
         // Set the previous move
-        self.previous_move = Some(Move::new(microboard_row, microboard_col, cell_row, cell_col));
+        self.previous_move = Some(Move::new(
+            microboard_row,
+            microboard_col,
+            cell_row,
+            cell_col,
+        ));
 
         // Update the overall board status
         self.update_status();
@@ -225,7 +260,7 @@ impl fmt::Debug for Board {
         writeln!(f, "--------------------")?;
         for row in &self.cells {
             for microboard_row in 0..3 {
-                    write!(f, "|  ")?;
+                write!(f, "|  ")?;
                 for microboard in row {
                     for cell in 0..3 {
                         let cell_state: char = microboard.cells[microboard_row][cell].into();
@@ -295,7 +330,7 @@ impl MicroBoard {
         false
     }
 
-    pub fn get_available_moves(&self) -> Vec<(usize, usize)> {
+    fn get_available_moves(&self) -> Vec<(usize, usize)> {
         let mut moves = Vec::new();
         for i in 0..3 {
             for j in 0..3 {
