@@ -1,15 +1,17 @@
-use ultimate_ttt::board::{BoardStatus, Player, Board};
+pub mod random_ai;
+pub mod minimax_ai;
 
-mod random_ai;
-use random_ai::RandomPlayer;
+// Re-export the RandomPlayer so it can be used directly
+pub use random_ai::RandomPlayer;
 
-// Define the AIPlayer trait here or in a lib.rs
+use ultimate_ttt::board::{Board, BoardStatus, Player, Move};
+
 pub trait AIPlayer {
     fn new(player: Player) -> Self
     where
         Self: Sized;
 
-    fn choose_move(&self, board: &Board) -> Option<ultimate_ttt::board::Move>;
+    fn choose_move(&self, board: &Board) -> Option<Move>;
 }
 
 pub fn play_game(
@@ -29,12 +31,15 @@ pub fn play_game(
         if let Some(mv) = chosen_move {
             let play_result = board.play(mv, current_player);
             if play_result.is_err() {
+                println!("{:?}", board);
                 println!("Error playing move: {}", play_result.err().unwrap());
-                continue;
+                println!("Invalid move attempted: {:?}", mv);
             }
         } else {
             panic!("AI could not choose a move");
         }
+
+        // println!("Player {:?} played move: {:?}", current_player, chosen_move);
 
         current_player = if current_player == Player::X {
             Player::O
@@ -44,17 +49,4 @@ pub fn play_game(
     }
 
     board.get_status().clone()
-}
-
-fn main() {
-    let ai_player1: Box<dyn AIPlayer> = Box::new(RandomPlayer::new(Player::X));
-    let ai_player2: Box<dyn AIPlayer> = Box::new(RandomPlayer::new(Player::O));
-
-    let result = play_game(&ai_player1, &ai_player2);
-
-    match result {
-        BoardStatus::Won(player) => println!("Player {:?} wins!", player),
-        BoardStatus::Draw => println!("The game is a draw!"),
-        BoardStatus::InProgress => println!("The game is still in progress!"),
-    }
 }
