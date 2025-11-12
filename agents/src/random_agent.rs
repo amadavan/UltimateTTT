@@ -5,7 +5,7 @@ pub struct RandomPlayer {
     _player: Player,
 }
 
-impl crate::AIPlayer for RandomPlayer {
+impl crate::Agent for RandomPlayer {
     fn new(player: Player) -> Self {
         RandomPlayer { _player: player }
     }

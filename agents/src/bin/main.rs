@@ -1,9 +1,9 @@
 use ultimate_ttt::board::{BoardStatus, Player};
-use ai::{RandomPlayer, AIPlayer, play_game};
+use ai::{RandomPlayer, Agent, play_game};
 
 fn main() {
-    let ai_player1: Box<dyn AIPlayer> = Box::new(RandomPlayer::new(Player::X));
-    let ai_player2: Box<dyn AIPlayer> = Box::new(RandomPlayer::new(Player::O));
+    let ai_player1: Box<dyn Agent> = Box::new(RandomPlayer::new(Player::X));
+    let ai_player2: Box<dyn Agent> = Box::new(RandomPlayer::new(Player::O));
 
     let result = play_game(&ai_player1, &ai_player2);
 

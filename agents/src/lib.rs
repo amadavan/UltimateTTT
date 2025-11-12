@@ -1,12 +1,12 @@
-pub mod random_ai;
+pub mod random_agent;
 pub mod minimax_ai;
 
 // Re-export the RandomPlayer so it can be used directly
-pub use random_ai::RandomPlayer;
+pub use random_agent::RandomPlayer;
 
 use ultimate_ttt::board::{Board, BoardStatus, Player, Move};
 
-pub trait AIPlayer {
+pub trait Agent {
     fn new(player: Player) -> Self
     where
         Self: Sized;
@@ -15,8 +15,8 @@ pub trait AIPlayer {
 }
 
 pub fn play_game(
-    ai_player1: &Box<dyn AIPlayer>,
-    ai_player2: &Box<dyn AIPlayer>,
+    ai_player1: &Box<dyn Agent>,
+    ai_player2: &Box<dyn Agent>,
 ) -> BoardStatus {
     let mut board = Board::new();
     let mut current_player = Player::X;
