@@ -1,10 +1,43 @@
 use std::fmt;
+use std::hash::Hash;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Player {
     X,
     O,
     Empty,
+}
+
+impl bincode::Encode for Player {
+    fn encode<E: bincode::enc::Encoder>(
+        &self,
+        encoder: &mut E,
+    ) -> Result<(), bincode::error::EncodeError> {
+        match self {
+            Player::X => 1u8.encode(encoder),
+            Player::O => 2u8.encode(encoder),
+            Player::Empty => 0u8.encode(encoder),
+        }
+    }
+}
+
+impl<DC> bincode::Decode<DC> for Player {
+    fn decode<D: bincode::de::Decoder>(
+        decoder: &mut D,
+    ) -> Result<Self, bincode::error::DecodeError> {
+        let value = u8::decode(decoder)?;
+        match value {
+            1 => Ok(Player::X),
+            2 => Ok(Player::O),
+            0 => Ok(Player::Empty),
+            _ => Err(bincode::error::DecodeError::OtherString(format!(
+                "Invalid value for Player: {}",
+                value
+            ))),
+        }
+    }
 }
 
 impl From<Player> for char {
@@ -253,6 +286,21 @@ impl Board {
 
         Ok(())
     }
+
+    pub fn to_hash(&self) -> [Player; 81] {
+        let mut board_state = [Player::Empty; 81];
+        for (mi, row) in self.cells.iter().enumerate() {
+            for (mj, microboard) in row.iter().enumerate() {
+                for (ci, microboard_row) in microboard.cells.iter().enumerate() {
+                    for (cj, &cell) in microboard_row.iter().enumerate() {
+                        let idx = mi * 27 + mj * 9 + ci * 3 + cj;
+                        board_state[idx] = cell;
+                    }
+                }
+            }
+        }
+        board_state
+    }
 }
 
 impl fmt::Debug for Board {
@@ -275,6 +323,8 @@ impl fmt::Debug for Board {
         Ok(())
     }
 }
+
+impl Eq for Board {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MicroBoard {
