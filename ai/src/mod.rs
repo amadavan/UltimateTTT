@@ -1,4 +1,4 @@
-pub mod random;
+pub mod random_ai;
 
 pub trait AIPlayer {
     fn new(player: crate::board::Player) -> Self
