@@ -26,9 +26,9 @@ fn main() {
 
         if coords.len() == 4 {
             println!("Playing move: {:?}", coords);
-            let (microboard_row, microboard_col, cell_row, cell_col) = (coords[0], coords[1], coords[2], coords[3]);
+            let mv = (coords[0], coords[1], coords[2], coords[3]).into();
 
-            let play = board.play(microboard_row, microboard_col, cell_row, cell_col, current_player);
+            let play = board.play(mv, current_player);
             if let Err(err) = play {
                 println!("Error: {}", err);
                 continue;
